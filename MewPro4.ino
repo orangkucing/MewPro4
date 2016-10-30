@@ -1,36 +1,4 @@
-#include <Arduino.h>
-#include <EEPROM.h>
 #include "MewPro.h"
-
-// enable console output
-// set false if this is MewPro #0 of dual dongle configuration
-boolean debug = true;
-
-// a modified version of WireS library is already included in MewPro4 source package to minimize memory consumption
-#include "WireS.h"
-
-// end of Options
-//////////////////////////////////////////////////////////
-
-#include "startup.h"
-
-// i2c transaction state
-const int SESSION_IDLE           = 0;
-// send command length
-const int SESSION_CMDLEN_SENT    = 1;
-// send command body
-const int SESSION_CMDBODY_SENT   = 2;
-// prepare reply request
-const int SESSION_RPLRQBUF_READY = 3; 
-// send reply request length
-const int SESSION_RPLRQLEN_SENT  = 4;
-// send reply request body
-const int SESSION_RPLRQBODY_SENT = 5;
-volatile char i2cState = SESSION_IDLE;
-
-volatile unsigned char session = 0xFF;
-
-byte hour, minute, second; // to sync timestamps
 
 void setup()
 {
@@ -39,7 +7,7 @@ void setup()
   // Set 57600 baud or slower.
   Serial.begin(57600);
 
-  setupLED(); // onboard LED setup
+  setupLED(); // onboard LED (if any) setup
   initEEPROM();
 
   pinMode(BPRDY, INPUT);
@@ -51,9 +19,9 @@ void setup()
 
 void loop() 
 {
-  char *addr;
+  // start up sessions
   if (queueState == QUEUE_EMPTY) {
-    addr = (char *)pgm_read_word(&(startUp[(unsigned char)(startupSession++)]));
+    char *addr = (char *)pgm_read_word(&(startUp[(unsigned char)(startupSession++)]));
     if (addr != NULL) {
       queueIn(addr);
       queueState = QUEUE_BUSY;
@@ -61,7 +29,17 @@ void loop()
       queueState = QUEUE_HALT;
     }
   }
-  checkBacpacCommands();
-  checkCameraCommands();
+  if (recvc) {
+    if (parseI2C_R()) {
+      i2cState = SESSION_CMDBODY_SENT; // send reply request again
+    } else {
+      i2cState = SESSION_IDLE;
+      if (queueState != QUEUE_HALT) {
+        queueState = QUEUE_EMPTY;
+      }
+    }    
+    recvc = 0;
+  }
+  checkTerminalCommands();
 }
 

@@ -1,0 +1,512 @@
+void printHex(uint8_t d, boolean upper)
+{
+  char t;
+  char a = upper ? 'A' : 'a';
+  t = d >> 4 | '0';
+  if (t > '9') {
+    t += a - '9' - 1;
+  }
+  Serial.print(t);
+  t = d & 0xF | '0';
+  if (t > '9') {
+    t += a - '9' - 1;
+  }
+  Serial.print(t);
+}
+
+void _printInput()
+{
+  if (debug) {
+    int i = 1;
+    int buflen = RECV(0);
+    Serial.print(F("> "));
+    while (i <= buflen) {
+      if ((i == 1 || i == 2) && isprint(RECV(i))) {
+        Serial.print(' '); Serial.print((char) RECV(i));
+      } else {
+        printHex(RECV(i), false);
+      }
+      Serial.print(' ');
+      i++;
+    }
+    if (recvc == 1) {
+      Serial.println("");
+    } else {
+      Serial.println(F(" ** collision detected"));
+    } 
+  }
+}
+
+// parse command/reply that is received from camera through the herobus
+boolean parseI2C_R()
+{
+  boolean resend = false;
+  int reply = isOmni() ? 2 : 0;
+  _printInput();
+  switch (RECV(4)) {
+    case 0: // received packet is the reply for the previous ZZ command
+      resend = ZZcommand_R(reply);
+      break;
+    case 2: // received packet is the reply for the previous YY command
+      resend = YYcommand_R(reply);
+      break;
+    case 4:
+      ZZcommand_R(0); // ZZ command received. Dual Hero only
+      break;
+    case 6:
+      YYcommand_R(0); // YY command received. Dual Hero only
+      break;
+  }
+  return resend;
+}
+
+boolean YYcommand_R(int reply)
+{
+  boolean resend = false;
+  switch (RECV(5 + reply)) {
+    default:
+      resend = extendedYYcommand_R(reply);
+      break;
+  }
+  return resend;
+}
+
+boolean ZZcommand_R(int reply)
+{
+  boolean resend = false;
+  switch (RECV(5 + reply)) {
+    case 1:
+      switch (RECV(6 + reply)) {
+        case 0:
+          if (!reply) {
+            // Dual Hero only
+            buf[0] = 14;
+            RECV(0) = 0; RECV(1) = 1;
+            RECV(2) = 11;
+            memcpy_P((byte *)&(RECV(3)), F("\x00\x00\x00\x00\x00\x00\x01\x03\x03\x00\x00"), 11);
+            i2cState = SESSION_IDLE;
+            SendBufToCamera((byte *)&(RECV(0)));
+            startupSession = 0; queueState = QUEUE_EMPTY; // start startup sequences       
+          }
+          break;
+      }
+      break;
+    case 2: // camera power
+      switch (RECV(6 + reply)) {
+        case 1:
+          __debug(F("power on"));
+          if (!reply) {
+            // Dual Hero only
+            buf[0] = 11;
+            RECV(0) = 0; RECV(1) = 1;
+            RECV(2) = 8;
+            memcpy_P((byte *)&(RECV(3)), F("\x00\x00\x00\x00\x00\x00\x02\x00"), 8);
+            i2cState = SESSION_IDLE;
+            SendBufToCamera((byte *)&(RECV(0)));                      
+          }
+          break;
+      }
+      break;
+    case 3: // get camera version
+      if (debug) {
+        Serial.print(F("version: "));
+        Serial.println((char *)&RECV(7 + reply));
+      }
+      break;
+    case 0: // extended command
+      resend = extendedZZcommand_R(reply);
+      break;
+  }
+  return resend;
+}
+
+boolean extendedYYcommand_R(int reply)
+{
+  boolean resend = false;
+  switch (RECV(6 + reply)) {
+    case 1: // mode change
+      break;
+    case 2: // video
+      switch (RECV(7 + reply)) {
+        case 1: // default sub mode
+          break;
+        case 27: // shutter button depressed. start
+          if (reply) {
+            // Omni only
+            // modify the reply to make a new command. DON'T USE buf[7..] as it is already filled by using the queue or the serial
+            buf[0] = 15;
+            RECV(0) = 5; RECV(1) = 2;
+            RECV(2) = 12;
+            RECV(3) = RECV(4) = 'Z';
+            RECV(5) = ++session;
+            RECV(14) = 0; RECV(13) = second; RECV(12) = minute; RECV(11) = hour;
+            RECV(13)++;
+            if (RECV(13) == 60) {
+              RECV(13) = 0; RECV(12)++;
+              if (RECV(12) == 60) {
+                RECV(12) = 0; RECV(11)++;
+                if (RECV(11) == 24) {
+                  RECV(11) = 0;
+                }
+              }
+            }
+            memcpy_P((byte *)&(RECV(6)), F("\x04\x00\x01\x01\x01"), 5);
+            i2cState = SESSION_IDLE;
+            SendBufToCamera((byte *)&(RECV(0)));
+          }
+          break;
+        case 28: // sync stop
+          if (reply) {
+            // Omni only
+            if (RECV(6) != STATUS_BUSY) {
+              resend = true;
+              break;
+            }
+            // modify the reply to make a new command. DON'T USE buf[7..] as it is already filled by using the queue or the serial
+            buf[0] = 11;
+            RECV(0) = 5; RECV(1) = 2;
+            RECV(2) = 8;
+            RECV(3) = RECV(4) = 'Z';
+            RECV(5) = ++session;
+            memcpy_P((byte *)&(RECV(6)), F("\x04\x00\x01\x01\x00"), 5);        
+            i2cState = SESSION_IDLE;
+            SendBufToCamera((byte *)&(RECV(0)));
+          }
+          break;
+        case 38: // all video settings
+          break;
+      }
+      break;
+    case 3: // photo
+      switch (RECV(7 + reply)) {
+        case 1: // default sub mode
+          break;
+        case 23: // shutter button depressed. start
+          if (reply) {
+            // Omni only
+            if (RECV(6) != STATUS_RECORDING) {
+              resend = true;
+            }
+          }
+          break;
+        case 27: // all photo settings
+          break;
+      }
+      break;
+    case 4: // multi-shot
+      break;
+    case 7: // global settings
+      break;
+    case 9: // delete
+      break;
+  }
+  return resend;
+}
+
+boolean extendedZZcommand_R(int reply)
+{
+  boolean resend = false;
+  switch (RECV(6 + reply)) {
+    case 0: // protocol revision
+      // current protocol revison is 1 0 0
+      break;
+    case 1: // sync
+      switch (RECV(7 + reply)) {
+        case 1: // status request
+          switch (RECV(8 + reply)) {
+            case 0:
+              if (reply) {
+                // Omni only
+                if (mode != MODE_PHOTO) {
+                  // video
+                  if (RECV(6) != STATUS_RECORDING && RECV(6) != STATUS_IDLE) {
+                    resend = true;
+                  }
+                } else {
+                  // photo
+                  // modify the reply to make a new command. DON'T USE buf[7..] as it is already filled by using the queue or the serial
+                  buf[0] = 12;
+                  RECV(0) = 5; RECV(1) = 2;
+                  RECV(2) = 9;
+                  RECV(3) = RECV(4) = 'Z';
+                  RECV(5) = ++session;
+                  memcpy_P(&(RECV(6)), F("\x04\x00\x01\x02\x02\x01"), 6);
+                  i2cState = SESSION_IDLE;
+                  SendBufToCamera(&(RECV(0)));
+                }
+              }
+              break;
+            case 1:
+              if (reply) {
+                // Omni only
+                if (RECV(6) != STATUS_RECORDING) {
+                  resend = true;
+                }
+              }
+              break;
+          }
+          break;
+        case 2: // block until writing to microSD complete
+          if (reply) {
+            // Omni only
+            if (RECV(6) != STATUS_IDLE) {
+              resend = true;
+            }
+          }
+          break;
+      }
+      break;
+    case 2: // Heartbeat
+      if (!reply) {
+        // Dual Hero only
+        buf[0] = 12;
+        RECV(0) = 0; RECV(1) = 1;
+        RECV(2) = 9;
+        RECV(3) = RECV(4) = 0;
+        RECV(5) = ++session;
+        memcpy_P((byte *)&(RECV(6)), F("\x00\x00\x00\x00\x02\x00"), 6);
+        i2cState = SESSION_IDLE;
+        SendBufToCamera((byte *)&(RECV(0)));    
+      }
+      break;
+    case 3: // power off
+      // never reach here
+      break;
+    case 5: // bacpac firmware version
+      break;
+    case 6: // bacpac serial number
+      break;
+  }
+  return resend;
+}
+
+// parse command that is sent to camera through the herobus
+void parseI2C_W(byte *p)
+{
+  switch ((p[3] << 8) + p[4]) {
+    case ('Y' << 8) + 'Y':
+      YYcommand_W(p);
+      break;
+    case ('Z' << 8) + 'Z':
+      ZZcommand_W(p);
+      break;
+  }
+}
+
+void YYcommand_W(byte *p)
+{
+  switch (p[7]) {
+    default:
+      extendedYYcommand_W(p);
+      break;
+  }
+}
+
+void ZZcommand_W(byte *p)
+{
+  switch (p[7]) {
+    case 1: // Dual Hero only
+      break;
+    case 2: // camera power
+      break;
+    case 3: // get camera version
+      break;
+    case 0: // extended command
+      extendedZZcommand_W(p);
+      break;
+  }
+}
+
+void extendedYYcommand_W(byte *p)
+{
+  switch (p[8]) {
+    case 1: // mode change
+      switch (p[9]) {
+        case 1: // set main mode
+          mode = p[12];
+          break;
+        case 5: // set sub mode. argc = 2: main, sub
+          mode = p[12];
+          break;
+      }
+      break;
+    case 2: // video
+      switch (p[9]) {
+        case 1: // default sub mode
+          break;
+        case 3: // argc = 3: resolution, fps, fov
+          break;
+        case 5: // piv. Note: not generated by ID_MASTER (default firmware's bug)
+          break;
+        case 7: // looping
+          break;
+        case 9: // low_light. Note: not generated by ID_MASTER (default firmware's bug)
+          break;
+        case 11: // spot meter
+          break;
+        case 13: // timelapse_rate
+          break;
+        case 15: // protune
+          break;
+        case 17: // protune_white_balance
+          break;
+        case 19: // protune_color
+          break;
+        case 21: // protune_sharpness
+          break;
+        case 23: // protune_iso
+          break;
+        case 25: // protune_ev
+          break;
+        case 26: // reset protune. argc = 0
+          break;
+        case 27: // shutter button depressed. start
+          if (isOmni()) {
+            // keep current time for future reference
+            hour = p[13]; minute = p[14]; second = p[15];
+          } else {
+            // no need to send the current time. truncate the packet
+            p[11] = 0; p[2] -= 4;
+          }
+          break;
+        case 28: // sync stop
+          break;
+        case 38: // bulk transfer video settings
+          break;
+        case 40: // exposure_time
+          break;
+        case 42: // protune_iso_mode
+          break;
+      }
+      break;
+    case 3: // photo
+      switch (p[9]) {
+        case 1: // default sub mode
+          break;
+        case 3: // resolution
+          break;
+        case 5: // continuous_rate
+          break;
+        case 7: // spot meter
+          break;
+        case 9: // exposure_time
+          break;
+        case 11: // protune
+          break; 
+        case 13: // protune_white_balance
+          break;
+        case 15: // protune_color
+          break;
+        case 17: // protune_sharpness
+          break;
+        case 19: // protune_iso
+          break;
+        case 21: // protune_ev
+          break;
+        case 22: // reset protune. argc = 0
+          break;
+        case 23: // shutter button depressed. start
+          break;
+        case 27: // bulk transfer photo settings
+          break;
+        case 29: // protune_iso_min
+          break;
+      }
+      break;
+    case 4: // multi-shot
+      switch (p[9]) {
+        case 1: // default sub mode
+          break;
+        //
+        // ID_MASTER doesn't generate any of these setting commands (default firmware's bug)
+        case 3: // resolution
+          break;
+        case 5: // burst_rate
+          break;
+        case 7; // timelapse_rate
+          break;
+        case 9: // nightlapse_rate
+          break;
+        case 11: // spot_meter
+          break;
+        case 13: // exposure_time
+          break;
+        case 15: // protune
+          break;
+        case 17: // protune_white_balance
+          break;
+        case 19: // protune_color
+          break;
+        case 21: // protune_sharpness
+          break;
+        case 23: // protune_iso
+          break;
+        case 25: // protune_ev
+          break;
+        case 26: // reset protune. arg = 0
+          break;
+        //
+        //
+        case 27: // shutter button depressed. start    
+          break;
+        case 32: // bulk transfer multi-shot settings
+          break;
+        // ID_MASTER doesn't generate the following setting command (default firmware's bug)
+        case 34: // protune_iso_min (v4)
+          break;
+      }
+      break;
+    case 7: // global settings
+      switch (p[9]) {
+        case 9: // orientation (ID_MASTER generate "UP" when "AUTO" is selected (default firmware's bug))
+          break;
+        case 11: // default_app_mode
+          break;
+        case 13: // quick_capture
+          break;
+        case 15: // led
+          break;
+        case 17: // beep_volume
+          break;
+        case 19: // video_format
+          break;
+        case 21: // osd
+          break;
+        case 23: // auto_power_down
+          break;
+        case 27: // argc = 7: year_high, year_low, month, date, hour, minute, second
+          break;
+        case 32: // language
+          break;
+      }
+      break;
+    case 9: // delete
+      switch(p[9]) {
+        case 9: // delete last. argc = 0
+          break;
+        case 10: // delete all. argc = 0
+          break;
+      }
+      break;
+  }
+}
+
+void extendedZZcommand_W(byte *p)
+{
+  switch (p[8]) {
+    case 0:
+      // current protocol revision is 1 0 0
+      break;
+    case 1: // sync
+      break;
+    case 2: // Heartbeat
+      break;
+    case 3: // power off
+      break;
+    case 5: // bacpac firmware version
+      break;
+    case 6: // bacpac serial number
+      break;
+  }
+}
+

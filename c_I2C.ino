@@ -13,7 +13,7 @@ const byte rom_omni_0[] PROGMEM = {
   0x01, // major version
   0x01, // minor version
   0x06, // number of cameras in the rig
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // serial number (?)
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // serial number
   // check sum
   // 0
   // 0
@@ -28,7 +28,7 @@ const byte rom_omni_1[] PROGMEM = {
     0x01, // major version
     0x01, // minor version
     SLOT_NUMBER,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // serial number (?)
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // serial number
     // check sum
     // 0
     // 0
@@ -42,7 +42,7 @@ const byte* const rom_omni[2] PROGMEM = {
 const byte rom_dual_hero_0[] PROGMEM = {
   // Master
   ID_MASTER, // id
-  0x05, // major version (Note: Dual Hero's value = 5)
+  0x05, // major version
   0x01, // minor version
   0x0a,
 };
@@ -50,7 +50,7 @@ const byte rom_dual_hero_0[] PROGMEM = {
 const byte rom_dual_hero_1[] PROGMEM = {
   // Slave
   ID_SLAVE, // id
-  0x05, // major version (Note: Dual Hero's value = 5)
+  0x05, // major version
   0x01, // minor version
   0x0b,
 };
@@ -91,9 +91,9 @@ void receiveHandler(size_t numBytes)
     return;
   }
 #ifndef DEVELOPPER_DEBUG
-  if (!isOmni() && RECV(1) == 0 && RECV(2) == 0) {
-     // camera's default firmware PROTOCOL FATAL FLAW:
-     //   we must ignore all the reply packets otherwise data collision might occur
+  if (!isOmni() && RECV(2) == 0 /* reply packet */) {
+     // camera's default firmware PROTOCOL has a FATAL FLAW:
+     //     we must ignore all the reply packets otherwise data collision might occur
      return;
   }
 #endif
@@ -186,7 +186,13 @@ void __romWrite(uint8_t id)
   }
 }
 
-#define ID_TARGET ID_SLAVE
+// choose either
+#define ID_TARGET0 ID_MASTER
+//#define ID_TARGET0 ID_SLAVE
+// choose either
+//#define ID_TARGET1 ID_PRIMARY
+#define ID_TARGET1 ID_SECONDARY
+
 // Write built-in EEPROM
 void roleChange()
 {
@@ -195,7 +201,7 @@ void roleChange()
   pinMode(BPRDY, INPUT);
   delay(1000);
 
-  id = isOmni() ? ID_TARGET : ID_SECONDARY;
+  id = isOmni() ? ID_TARGET0 : ID_TARGET1;
   __romWrite(id);
   pinMode(BPRDY, OUTPUT);
   eepromId = id;
@@ -205,12 +211,12 @@ void roleChange()
 
 void initEEPROM()
 {
-  // emulate bacpac for Omni (ID_SECONDARY) or default (ID_TARGET) firmwares
+  // emulate bacpac for Omni (ID_TARGET1) or default (ID_TARGET0) firmwares
   eepromId = EEPROM.read(0);
-//  if (eepromId != ID_TARGET && eepromId != ID_SECONDARY) {
-    __romWrite(ID_TARGET);
-    eepromId = ID_TARGET;
-//  }
+  if (eepromId != ID_TARGET0 && eepromId != ID_TARGET1) {
+    __romWrite(ID_TARGET0);
+    eepromId = ID_TARGET0;
+  }
   switch (eepromId) {
     case ID_MASTER:
       __debug(F("Dual Hero EEPROM (master)"));
@@ -235,45 +241,6 @@ void __debug(const __FlashStringHelper *p)
   }
 }
 
-void printHex(uint8_t d, boolean upper)
-{
-  char t;
-  char a = upper ? 'A' : 'a';
-  t = d >> 4 | '0';
-  if (t > '9') {
-    t += a - '9' - 1;
-  }
-  Serial.print(t);
-  t = d & 0xF | '0';
-  if (t > '9') {
-    t += a - '9' - 1;
-  }
-  Serial.print(t);
-}
-
-void _printInput()
-{
-  if (debug) {
-    int i = 1;
-    int buflen = RECV(0);
-    Serial.print(F("> "));
-    while (i <= buflen) {
-      if ((i == 1 || i == 2) && isprint(RECV(i))) {
-        Serial.print(' '); Serial.print((char) RECV(i));
-      } else {
-        printHex(RECV(i), false);
-      }
-      Serial.print(' ');
-      i++;
-    }
-    if (recvc == 1) {
-      Serial.println("");
-    } else {
-      Serial.println(F(" * collision detected"));
-    } 
-  }
-}
-
 void SendBufToCamera(byte *p) {
   if (buf[0] > 3) {
     if (debug) {
@@ -291,14 +258,9 @@ void SendBufToCamera(byte *p) {
       }
       Serial.println("");
     }
-    // keep current time if sync requested
-    if (p[4] == 'Y' && p[8] == 2 && p[9] == 27) {
-      hour = p[13]; minute = p[14]; second = p[15];
-    }
+    parseI2C_W(p);
   } else {
-    if (debug) {
-      Serial.println(F("< request reply"));
-    }
+    __debug(F("< request reply")); // (Omni firmware only)
   }
   if (isOmni()) {
     sendptr = p;
@@ -344,7 +306,7 @@ void powerOn()
   }
 }
 
-void checkCameraCommands()
+void checkTerminalCommands()
 {
   if (i2cState == SESSION_CMDBODY_SENT ) { // Omni only
     // buf[0..6] can be modified anytime
@@ -388,7 +350,7 @@ void checkCameraCommands()
         powerOn();
         __emptyInputBuffer();
         return;     
-/*      case '&':
+      case '&':
         bufp = 6;
         debug = !debug;
         serialfirst = false;
@@ -401,7 +363,7 @@ void checkCameraCommands()
         __debug(F("role change"));
         roleChange();
         __emptyInputBuffer();
-        return; */
+        return;
       default:
         if (bufp >= 8 && isxdigit(c)) {
           c -= '0';

@@ -8,7 +8,7 @@ char **startUp; // pointer to startup sequence array
 
 // start up sequence for Omni firmware
 const char omni_session_0[] PROGMEM = "ZZ0000010000";
-const char omni_session_1[] PROGMEM = "ZZ00050300000500"; // enter AR mode
+const char omni_session_1[] PROGMEM = "ZZ00050300000500";
 
 const char* const omni_startUp[] PROGMEM = {
   omni_session_0, omni_session_1, NULL
