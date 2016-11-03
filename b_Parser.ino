@@ -14,6 +14,8 @@ void printHex(uint8_t d, boolean upper)
   Serial.print(t);
 }
 
+char tmp[20];
+
 void _printInput()
 {
   if (debug) {
@@ -32,7 +34,15 @@ void _printInput()
     if (recvc == 1) {
       Serial.println("");
     } else {
-      Serial.println(F(" ** collision detected"));
+      Serial.println(F(" ** collision detected: print old buf")); Serial.print(' ');
+      int buflen = tmp[0];
+      int i = 1;
+      while (i <= buflen) {
+        printHex(tmp[i], false);
+        Serial.print(' ');
+        i++;
+      }
+      Serial.println("");
     } 
   }
 }
@@ -41,14 +51,14 @@ void _printInput()
 boolean parseI2C_R()
 {
   boolean resend = false;
-  int reply = isOmni() ? 2 : 0;
+  int base = isOmni() ? 2 : 0;
   _printInput();
   switch (RECV(4)) {
     case 0: // received packet is the reply for the previous ZZ command
-      resend = ZZcommand_R(reply);
+      resend = ZZcommand_R(base);
       break;
     case 2: // received packet is the reply for the previous YY command
-      resend = YYcommand_R(reply);
+      resend = YYcommand_R(base);
       break;
     case 4:
       ZZcommand_R(0); // ZZ command received. Dual Hero only
@@ -60,45 +70,41 @@ boolean parseI2C_R()
   return resend;
 }
 
-boolean YYcommand_R(int reply)
+boolean YYcommand_R(int base)
 {
   boolean resend = false;
-  switch (RECV(5 + reply)) {
+  switch (RECV(5 + base)) {
     default:
-      resend = extendedYYcommand_R(reply);
+      resend = extendedYYcommand_R(base);
       break;
   }
   return resend;
 }
 
-boolean ZZcommand_R(int reply)
+boolean ZZcommand_R(int base)
 {
   boolean resend = false;
-  switch (RECV(5 + reply)) {
+  switch (RECV(5 + base)) {
     case 1:
-      switch (RECV(6 + reply)) {
+      switch (RECV(6 + base)) {
         case 0:
-          if (!reply) {
+          if (RECV(4) == 4) { // ZZ received
             // Dual Hero only
-            buf[0] = 14;
-            RECV(0) = 0; RECV(1) = 1;
             RECV(2) = 11;
-            memcpy_P((byte *)&(RECV(3)), F("\x00\x00\x00\x00\x00\x00\x01\x03\x03\x00\x00"), 11);
+            memcpy_P((byte *)&(RECV(3)), F("\x00\x00\x00\x00\x00\x00\x01\x03\x01\x00\x00"), 11);
             i2cState = SESSION_IDLE;
             SendBufToCamera((byte *)&(RECV(0)));
-            startupSession = 0; queueState = QUEUE_EMPTY; // start startup sequences       
+            startupSession = 0; queueState = QUEUE_EMPTY; // start startup sequences
           }
           break;
       }
       break;
     case 2: // camera power
-      switch (RECV(6 + reply)) {
+      switch (RECV(6 + base)) {
         case 1:
           __debug(F("power on"));
-          if (!reply) {
+          if (RECV(4) == 4) { // ZZ received
             // Dual Hero only
-            buf[0] = 11;
-            RECV(0) = 0; RECV(1) = 1;
             RECV(2) = 8;
             memcpy_P((byte *)&(RECV(3)), F("\x00\x00\x00\x00\x00\x00\x02\x00"), 8);
             i2cState = SESSION_IDLE;
@@ -110,28 +116,28 @@ boolean ZZcommand_R(int reply)
     case 3: // get camera version
       if (debug) {
         Serial.print(F("version: "));
-        Serial.println((char *)&RECV(7 + reply));
+        Serial.println((char *)&RECV(7 + base));
       }
       break;
     case 0: // extended command
-      resend = extendedZZcommand_R(reply);
+      resend = extendedZZcommand_R(base);
       break;
   }
   return resend;
 }
 
-boolean extendedYYcommand_R(int reply)
+boolean extendedYYcommand_R(int base)
 {
   boolean resend = false;
-  switch (RECV(6 + reply)) {
+  switch (RECV(6 + base)) {
     case 1: // mode change
       break;
     case 2: // video
-      switch (RECV(7 + reply)) {
+      switch (RECV(7 + base)) {
         case 1: // default sub mode
           break;
         case 27: // shutter button depressed. start
-          if (reply) {
+          if (isOmni()) {
             // Omni only
             // modify the reply to make a new command. DON'T USE buf[7..] as it is already filled by using the queue or the serial
             buf[0] = 15;
@@ -156,7 +162,7 @@ boolean extendedYYcommand_R(int reply)
           }
           break;
         case 28: // sync stop
-          if (reply) {
+          if (isOmni()) {
             // Omni only
             if (RECV(6) != STATUS_BUSY) {
               resend = true;
@@ -173,29 +179,41 @@ boolean extendedYYcommand_R(int reply)
             SendBufToCamera((byte *)&(RECV(0)));
           }
           break;
-        case 38: // all video settings
+        case 38: // bulk transfer video settings
           break;
       }
       break;
     case 3: // photo
-      switch (RECV(7 + reply)) {
+      switch (RECV(7 + base)) {
         case 1: // default sub mode
           break;
         case 23: // shutter button depressed. start
-          if (reply) {
+          if (isOmni()) {
             // Omni only
             if (RECV(6) != STATUS_RECORDING) {
               resend = true;
             }
           }
           break;
-        case 27: // all photo settings
+        case 27: // bulk transfer photo settings
           break;
       }
       break;
     case 4: // multi-shot
+      switch (RECV(7 + base)) {
+        case 1: // default sub mode
+          break;
+        case 27: // shutter button depressed. start
+          break;
+        case 32: // bulk transfer multi_shot settings
+          break;
+      }
       break;
     case 7: // global settings
+      switch (RECV(7 + base)) {
+        case 33: // bulk transfer
+          break;
+      }
       break;
     case 9: // delete
       break;
@@ -203,19 +221,19 @@ boolean extendedYYcommand_R(int reply)
   return resend;
 }
 
-boolean extendedZZcommand_R(int reply)
+boolean extendedZZcommand_R(int base)
 {
   boolean resend = false;
-  switch (RECV(6 + reply)) {
+  switch (RECV(6 + base)) {
     case 0: // protocol revision
       // current protocol revison is 1 0 0
       break;
     case 1: // sync
-      switch (RECV(7 + reply)) {
+      switch (RECV(7 + base)) {
         case 1: // status request
-          switch (RECV(8 + reply)) {
+          switch (RECV(8 + base)) {
             case 0:
-              if (reply) {
+              if (isOmni()) {
                 // Omni only
                 if (mode != MODE_PHOTO) {
                   // video
@@ -234,20 +252,36 @@ boolean extendedZZcommand_R(int reply)
                   i2cState = SESSION_IDLE;
                   SendBufToCamera(&(RECV(0)));
                 }
+              } else if (RECV(4) == 4) { // ZZ received
+                // Dual Hero only
+                RECV(2) = 10;
+                RECV(3) = RECV(4) = 0;
+                RECV(5) = 0;
+                memcpy_P((byte *)&(RECV(6)), F("\x00\x00\x00\x00\x01\x01\x00"), 7);
+                i2cState = SESSION_IDLE;
+                SendBufToCamera((byte *)&(RECV(0)));                                    
               }
               break;
             case 1:
-              if (reply) {
+              if (isOmni()) {
                 // Omni only
                 if (RECV(6) != STATUS_RECORDING) {
                   resend = true;
                 }
+              } else if (RECV(4) == 4) { // ZZ received
+                // Dual Hero only
+                RECV(2) = 10;
+                RECV(3) = RECV(4) = 0;
+                RECV(5) = 0;
+                memcpy_P((byte *)&(RECV(6)), F("\x00\x00\x00\x00\x01\x01\x01"), 7);
+                i2cState = SESSION_IDLE;
+                SendBufToCamera((byte *)&(RECV(0)));                    
               }
               break;
           }
           break;
         case 2: // block until writing to microSD complete
-          if (reply) {
+          if (isOmni()) {
             // Omni only
             if (RECV(6) != STATUS_IDLE) {
               resend = true;
@@ -257,13 +291,11 @@ boolean extendedZZcommand_R(int reply)
       }
       break;
     case 2: // Heartbeat
-      if (!reply) {
+      if (RECV(4) == 4) { // ZZ received
         // Dual Hero only
-        buf[0] = 12;
-        RECV(0) = 0; RECV(1) = 1;
         RECV(2) = 9;
         RECV(3) = RECV(4) = 0;
-        RECV(5) = ++session;
+        RECV(5) = 0;
         memcpy_P((byte *)&(RECV(6)), F("\x00\x00\x00\x00\x02\x00"), 6);
         i2cState = SESSION_IDLE;
         SendBufToCamera((byte *)&(RECV(0)));    
@@ -300,6 +332,7 @@ void YYcommand_W(byte *p)
       extendedYYcommand_W(p);
       break;
   }
+  p[7] = bootID;
 }
 
 void ZZcommand_W(byte *p)
@@ -423,7 +456,7 @@ void extendedYYcommand_W(byte *p)
           break;
         case 5: // burst_rate
           break;
-        case 7; // timelapse_rate
+        case 7: // timelapse_rate
           break;
         case 9: // nightlapse_rate
           break;
@@ -447,7 +480,7 @@ void extendedYYcommand_W(byte *p)
           break;
         //
         //
-        case 27: // shutter button depressed. start    
+        case 27: // shutter button depressed. start 
           break;
         case 32: // bulk transfer multi-shot settings
           break;
@@ -477,6 +510,8 @@ void extendedYYcommand_W(byte *p)
         case 27: // argc = 7: year_high, year_low, month, date, hour, minute, second
           break;
         case 32: // language
+          break;
+        case 33: // bulk transfer global settings
           break;
       }
       break;

@@ -73,7 +73,6 @@ int bufp = 6;
 
 // read the I2C buffer directly
 volatile char recvc = 0;
+char bootID = 0;
 #define RECV(a) (Wire.i2cData.Buffer[a + (isOmni() ? 4 : 0)])
 
-// debug deeper
-#define DEVELOPPER_DEBUG 1

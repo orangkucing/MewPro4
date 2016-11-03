@@ -79,6 +79,7 @@ boolean addressHandler(uint16_t slave, uint8_t count)
   return true;
 }
 
+
 void receiveHandler(size_t numBytes)
 { 
   if (emulateRom) {
@@ -90,13 +91,18 @@ void receiveHandler(size_t numBytes)
   if (numBytes <= 1) {
     return;
   }
-#ifndef DEVELOPPER_DEBUG
-  if (!isOmni() && RECV(2) == 0 /* reply packet */) {
-     // camera's default firmware PROTOCOL has a FATAL FLAW:
-     //     we must ignore all the reply packets otherwise data collision might occur
-     return;
+  if ((RECV(4) & _BV(1))) {
+     if (!isOmni()) {
+       bootID = RECV(5);
+     } else {
+       bootID = RECV(7);
+     }
   }
-#endif
+  if (!recvc) {
+    for (int i = 0; WIRE.available() && i < 20; i++) {
+      tmp[i] = WIRE.read();
+    }
+  }
   recvc++;
 }
 
@@ -187,8 +193,8 @@ void __romWrite(uint8_t id)
 }
 
 // choose either
-#define ID_TARGET0 ID_MASTER
-//#define ID_TARGET0 ID_SLAVE
+//#define ID_TARGET0 ID_MASTER
+#define ID_TARGET0 ID_SLAVE
 // choose either
 //#define ID_TARGET1 ID_PRIMARY
 #define ID_TARGET1 ID_SECONDARY
@@ -241,8 +247,16 @@ void __debug(const __FlashStringHelper *p)
   }
 }
 
-void SendBufToCamera(byte *p) {
+void SendBufToCamera(byte *p)
+{
+  if (isOmni()) {
+    sendptr = p;
+  } else {
+    buf[0] = p[2] + 1;
+    sendptr = p + 2;
+  }
   if (buf[0] > 3) {
+    parseI2C_W(p);
     if (debug) {
       int i = 0;
       int buflen = p[2];
@@ -258,18 +272,10 @@ void SendBufToCamera(byte *p) {
       }
       Serial.println("");
     }
-    parseI2C_W(p);
   } else {
     __debug(F("< request reply")); // (Omni firmware only)
   }
-  if (isOmni()) {
-    sendptr = p;
-    digitalWrite(I2CINT, HIGH);
-  } else {
-    sendptr = p + 2;
-    buf[0] = p[2] + 1;
-    digitalWrite(I2CINT, LOW);
-  }
+  digitalWrite(I2CINT, isOmni() ? HIGH : LOW);
 }
 
 // Camera power On
@@ -337,7 +343,7 @@ void checkTerminalCommands()
           buf[1] = 5; buf[2] = 2; // Omni only
           buf[3] = bufp - 4;
           buf[4] = buf[6]; buf[5] = buf[7];
-          buf[6] = ++session;
+          buf[6] = isOmni() ? ++session : 0;
           buf[7] = buf[4] == 'Y' ? 6 : 4;
           bufp = 6;
           SendBufToCamera(buf + 1);

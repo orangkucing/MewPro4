@@ -1,3 +1,13 @@
+// MewPro4
+//   Control GoPro Hero 4 Black cameras from the herobus
+//
+//   Target device: MewPro 2 or MewPro Cable (ATtiny1634 3.3V 8MHz)
+//
+//        (MewPro 1 with Arduino Pro Mini will not be supported due to ATmega328's broken TWI slave hardware)
+//
+//   Copyright (c) 2016 Hisashi ITO, Orangkucing Lab (info at mewpro.cc)
+//   The source code is under MIT licence. For more detail please see the LICENCE file.
+
 #include "MewPro.h"
 
 void setup()
