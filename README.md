@@ -33,7 +33,7 @@ MewPro 2 is shipped with optiboot as well as MewPro4 software for genlocking. Bu
 
 Lastly grab the MewPro4 application:
 
-- MewPro4 Application
+- [MewPro4 Application](https://github.com/orangkucing/MewPro4)
  - This is an open source software (MIT license). You can modify and distribute it as you like.
 
 ###Connections
