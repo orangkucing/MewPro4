@@ -1,104 +1,62 @@
-#MewPro
+#MewPro 2
 
-Arduino BacPac™ for GoPro Hero 3+ Black: GoPro can be controlled by Arduino Pro Mini attached on Herobus.
+Arduino BacPac™ for GoPro Hero 4 Black: GoPro can be controlled by ATtiny1634 attached on Herobus.
 
 Resources:
-* Introduction to MewPro: [http://mewpro.cc/?p=226]
-* Schematic Drawing: [http://mewpro.cc/?p=204]
-* List of GoPro Serial Commands: [http://mewpro.cc/2014/10/14/list-of-i%C2%B2c-commands/]
-* Herobus Pinout of GoPro Hero 3+ Black: [http://mewpro.cc/?p=207]
+
+- How To Use MewPro 2 and Application (This is an old documentation for GoPro Hero 3+ Black support, however, the installation procedure is the same to the application): [https://mewpro.cc/2015/06/29/how-to-use-mewpro-2-and-application/]
+
+- Schematic Drawing of MewPro 2 board: [https://mewpro.cc/wp-content/uploads/MewPro2.pdf]
 
 ------
 
-###How To Compile
-The following small-factor microcontroller boards are known to work with MewPro at least core functionalities and fit within the GoPro housing. Not all the sensors, however, are supported by each of them.
+###Prerequisites
 
-* Arduino Pro Mini 328 3.3V 8MHz
-  - w/ Arduino IDE 1.5.7+
-  - if you have troubles on compiling unused or nonexistent libraries, simply comment out #include line as //#include (see Note* below)
+In order to use MewPro 2 as a Hero 4 Black controller you need the following hardwares:
 
-* Arduino Pro Micro - 3.3V 8MHz
-  - w/ Arduino IDE 1.5.7+
-  - if you have troubles in compiling unused or nonexistent libraries, simply comment out #include line as //#include (see Note* below)
+- GoPro Hero 4 Black
+- [MewPro 2](http://mewpro.cc/product/mewpro-2/)
+- [Temporary FTDI Header](https://sites.google.com/site/handymaneric2/electronics/arduinominitemporaryheader) (included in MewPro 2 package)
+- [Sparkfun FTDI Basic Breakout - 3.3V](https://www.sparkfun.com/products/9873) and USB cable
+ - Use 3.3V version of the breakout board. Any pin compatible board should work.
 
-* Teensy 3.x
-  - [POWER SUPPLY: The VIN-VUSB pad connection on the bottom side of Teensy 3.x needs to be cut.]
-  - To compile the code with Teensy 3.x:
-  1. use Arduino IDE 1.0.6+ and Teensyduino 1.20+
-  2. comment out all unused #include as //#include (see Note* below)
+Softwares:
 
-(Note*: There is an infamous Arduino IDE's preprocessor bug (or something) that causes to ignore #ifdef/#else/#endif directives and forces to compile unnecessary libraries.)
+MewPro 2 is shipped with optiboot as well as MewPro4 software for genlocking. But if you like to modify/update the software you will need to prepare the following IDE, core. To install each software please refer their documentations.
 
-* GR-KURUMI
-  - [POWER SUPPLY: The dummy resistor soldered on JP1 of the MewPro board needs replacement w/ a general purpose diode of >100mA w/ dropoff voltage 1V (eg. Bourns S0180); Anode should be located on the Herobus side and Cathode on the Arduino side.]
-  - To compile the code with GR-KURUMI using (Renesas web compiler)[http://www.renesas.com/products/promotion/gr/index.jsp#cloud] :
-  1. open a new project with the template GR-KURUMI_Sketch_V1.04.zip
-  2. create a folder named MewPro and upload all the files there.
-  3. at project's home directory, replace all the lines of gr_scketch.cpp by the following code:
-```
-#include <RLduino78.h>
+- [Arduino IDE 1.6.12 or newer](http://arduino.cc/en/main/software)
+ - Older versions of Arduino IDE might work but we don't confirm that.
+- [ATtiny Core](https://github.com/SpenceKonde/ATTinyCore)
+ - 1634, x313, x4, x41, x5, x61, x7, x8 and 828 for Arduino 1.6.x
 
-#include "MewPro/MewPro.ino"
-#include "MewPro/a_Queue.ino"
-#include "MewPro/b_TimeAlarms.ino"
-#include "MewPro/c_I2C.ino"
-#include "MewPro/d_BacpacCommands.ino"
-#include "MewPro/e_Shutter.ino"
-#include "MewPro/f_Switch.ino"
-#include "MewPro/g_IRremote.ino"
-#include "MewPro/h_LightSensor.ino"
-#include "MewPro/i_PIRsensor.ino"
-#include "MewPro/j_VideoMotionDetect.ino"
-#include "MewPro/k_Genlock.ino"
-```
+(A modified WireS library is distributed with MewPro 4 source code package, so you don't need to download the original version separately.)
 
-------
+Lastly grab the MewPro4 application:
 
-###Serial Line Commands
-By default MewPro is configured to use the serial line for controlling GoPro. All the commands are listed at https://gist.github.com/orangkucing/45dd2046b871828bf592#file-gopro-i2ccommands-md . You can simply type a command string to the serial console followed by a return; for example,
+- MewPro4 Application
+ - This is an open source software (MIT license). You can modify and distribute it as you like.
 
-+ `PW0` : shutdown GoPro
-+ `TM0E0A0D090F00` : set GoPro clock to 2014-10-13 09:15:00 (hexadecimal of YYYY-MM-DD hh:mm:ss)
-+ `SY1` : shutter (camera mode) or start record (video mode)
-+ `SY0` : stop record (video mode)
+###Connections
 
-Almost all listed commands that have a label named SET_CAMERA_xxx are usable. Moreover two special command are implemented in MewPro:
+On your PC launch Arduino IDE that was installed as described in the above. In Arduino IDE [File]→[Open...]→ then open MewPro4.ino.
 
-+ `@` : GoPro power on
-+ `!` : toggle the role of MewPro (slave -> master or master -> slave)
+Connect MewPro 2
 
-Also the command `!` can be used to write the necessary bytes to onboard blank/new I²C EEPROM chip: In order to work as a fake Dual Hero Bacpac™, MewPro's I²C EEPROM must contain such info.
+!(http://mewpro.cc/wp-content/uploads/connection2.jpg)
 
-------
+to your PC with FTDI board and the temporary header.
 
-###Sensors
-The code here includes examples to support various sensors:
+!(http://mewpro.cc/wp-content/uploads/conne2.jpg)
 
-+ b_TimeAlarms.ino : Using RTC (real time clock) in GoPro camera body.
-+ e_Shutter.ino : Using external shutters such as CANON Timer Remote Controller TC-80N3.
-+ f_Switch.ino : Using mechanical switches such as push buttons or reed switches
-+ g_IRremote.ino : Using IR (infra red) remote controllers such as DFRobot Digital IR Receiver Module (Arduino), DFR0094.
-+ h_LightSensor.ino : Using Microsemi Visible Light Sensor LX1971 and green laser pointers.
-+ i_PIRsensor.ino : Using Parallax PIR sensors.
-+ j_VideoMotionDetect.ino : Using Intersil Sync Separator EL1883 and a bulk motion detect algorithm.
+Connecting FTDI please refer the pinout image below:
 
-If you like to use these functions please refer the corresponding .ino files.
+!(http://mewpro.cc/wp-content/uploads/MewPro2.jpg)
 
-------
+Then connect them to GoPro Hero 4 Black.
 
-###Genlock Dongle
-MewPro is designed to work with Genlock Dongle [https://github.com/orangkucing/GenlockDongle]
-Please refer the repository for details.
+!(http://mewpro.cc/wp-content/uploads/conne1.jpg)
 
-To use MewPro source code with Genlock Dongle, please #define USE_GENLOCK and set EEPROM (by using "!" command) as "master" for not only MewPro #0 but also MewPros #1, #2, #3, ...
+In Arduino IDE application, select [Tools]→[Board]→[ATTiny1634 (optiboot)] and [Tools]→[Port]→[(the port where you connected the FTDI cable)]. (B.O.D. and Clock settings are “don’t care” as these values are only effective when you burn a bootloader to the microcontroller by using an ISP programmer.)
 
-For MewPro #0 it must be set debug = false, and for other MewPros this setting does no harm. So you can always set debug = false if you use this source code with Genlock Dongle.
-
-------
-
-###Timelapse (non-genlock MewPro software)
-MewPro in non-genlock supports start/stop of GoPro's timelapse. However a misuse will cause firmware corruption of your GoPro and you'll need to reinsall the firmware. 
-
-+ GoPro must be power-on in timelapse mode and interval must be set beforehand.
-+ Interval must be greater than 2 seconds. (This is GoPro's limitation on Dual Hero System)
+MewPro4 source code is targeted to MewPro 2 board, genlocking with Iliad, and Hero 4 Black firmware version v3.0.0 or v4.0.0 (please note v4.0.0 has a fatal bug in bulk setting transfer). So the code should be complied successfully without any modifications. Click "Verify" the MewPro4 sketch and "Upload" it to MewPro 2 board.
 
