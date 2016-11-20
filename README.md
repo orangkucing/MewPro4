@@ -1,6 +1,6 @@
 #MewPro 2
 
-Arduino BacPac™ for GoPro Hero 4 Black: GoPro can be controlled by ATtiny1634 attached on Herobus.
+Arduino BacPac™ for GoPro Hero 4 Black/Silver: GoPro can be controlled by ATtiny1634 attached on Herobus.
 
 Resources:
 
@@ -12,9 +12,9 @@ Resources:
 
 ###Prerequisites
 
-In order to use MewPro 2 as a Hero 4 Black controller you need the following hardwares:
+In order to use MewPro 2 as a Hero 4 Black/Silver controller you need the following hardwares:
 
-- GoPro Hero 4 Black
+- GoPro Hero 4 Black/Silver
 - [MewPro 2](http://mewpro.cc/product/mewpro-2/)
 - [Temporary FTDI Header](https://sites.google.com/site/handymaneric2/electronics/arduinominitemporaryheader) (included in MewPro 2 package)
 - [Sparkfun FTDI Basic Breakout - 3.3V](https://www.sparkfun.com/products/9873) and USB cable
@@ -52,11 +52,11 @@ Connecting FTDI please refer the pinout image below:
 
 !(http://mewpro.cc/wp-content/uploads/MewPro2.jpg)
 
-Then connect them to GoPro Hero 4 Black.
+Then connect them to GoPro Hero 4 Black/Silver.
 
 !(http://mewpro.cc/wp-content/uploads/conne1.jpg)
 
 In Arduino IDE application, select [Tools]→[Board]→[ATTiny1634 (optiboot)] and [Tools]→[Port]→[(the port where you connected the FTDI cable)]. (B.O.D. and Clock settings are “don’t care” as these values are only effective when you burn a bootloader to the microcontroller by using an ISP programmer.)
 
-MewPro4 source code is targeted to MewPro 2 board, genlocking with Iliad, and Hero 4 Black firmware version v3.0.0 or v4.0.0 (please note v4.0.0 has a fatal bug in bulk setting transfer). So the code should be complied successfully without any modifications. Click "Verify" the MewPro4 sketch and "Upload" it to MewPro 2 board.
+MewPro4 source code is targeted to MewPro 2 board, genlocking with Iliad, and Hero 4 Black/Silver firmware version v3.0.0 or later (please note v4.0.0 and/or v5.0.0 has a fatal bug in bulk setting transfer). So the code should be complied successfully without any modifications. Click "Verify" the MewPro4 sketch and "Upload" it to MewPro 2 board.
 
