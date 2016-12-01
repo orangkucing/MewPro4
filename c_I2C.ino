@@ -117,7 +117,10 @@ void requestHandler()
       }
     } else {
       // Current Address Read
-      WIRE.write((uint8_t)wordAddr);
+      //WIRE.write((uint8_t)wordAddr);
+      // workaround for H4's I2C bug (one byte write automatically NACK'ed by master sometimes...)
+      wordAddr = 0;
+      WIRE.write(EEPROM.read(wordAddr));
     }
     return; 
   }
@@ -298,16 +301,9 @@ void powerOn()
     startUp = (char **)omni_startUp;
     startupSession = 0; queueState = QUEUE_EMPTY;
   } else {
-    digitalWrite(BPRDY, LOW); pinMode(BPRDY, OUTPUT);    // Show camera MewPro is ready.
-    digitalWrite(I2CINT, HIGH); pinMode(I2CINT, OUTPUT);
     digitalWrite(PWRBTN, LOW);
     delay(500);
     digitalWrite(PWRBTN, HIGH);
-    t = millis();
-    while (millis() - t < 1000 && digitalRead(HBUSRDY) != HIGH) { // wait until camera is up; but don't lock up.
-      ;
-    }    
-    resetI2C();
     startUp = (char **)default_startUp;
   }
 }

@@ -20,11 +20,16 @@ void setup()
   setupLED(); // onboard LED (if any) setup
   initEEPROM();
 
-  pinMode(BPRDY, INPUT);
-  pinMode(I2CINT, INPUT);
-  pinMode(HBUSRDY, INPUT);
-  digitalWrite(PWRBTN, HIGH);
-  pinMode(PWRBTN, OUTPUT);
+  if (!isOmni()) {
+    digitalWrite(I2CINT, HIGH); pinMode(I2CINT, OUTPUT);
+    resetI2C();
+    digitalWrite(BPRDY, LOW); pinMode(BPRDY, OUTPUT);
+  } else {
+    pinMode(BPRDY, INPUT);
+    pinMode(I2CINT, INPUT);
+  }
+  pinMode(HBUSRDY, INPUT_PULLUP);
+  digitalWrite(PWRBTN, HIGH); pinMode(PWRBTN, OUTPUT);
 }
 
 void loop() 

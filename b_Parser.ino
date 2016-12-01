@@ -302,7 +302,6 @@ boolean extendedZZcommand_R(int base)
       }
       break;
     case 3: // power off
-      // never reach here
       break;
     case 5: // bacpac firmware version
       break;
