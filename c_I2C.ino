@@ -304,7 +304,6 @@ void powerOn()
     digitalWrite(PWRBTN, LOW);
     delay(500);
     digitalWrite(PWRBTN, HIGH);
-    startUp = (char **)default_startUp;
   }
 }
 

@@ -95,6 +95,7 @@ boolean ZZcommand_R(int base)
             i2cState = SESSION_IDLE;
             SendBufToCamera((byte *)&(RECV(0)));
             startupSession = 0; queueState = QUEUE_EMPTY; // start startup sequences
+            startUp = (char **)default_startUp;
           }
           break;
       }
