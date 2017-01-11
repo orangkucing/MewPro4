@@ -210,7 +210,11 @@ void roleChange()
   pinMode(BPRDY, INPUT);
   delay(1000);
 
+#ifdef OMNI_SUPPORT
   id = isOmni() ? ID_TARGET0 : ID_TARGET1;
+#else
+  id = ID_TARGET0;
+#endif
   __romWrite(id);
   pinMode(BPRDY, OUTPUT);
   eepromId = id;
@@ -222,10 +226,17 @@ void initEEPROM()
 {
   // emulate bacpac for Omni (ID_TARGET1) or default (ID_TARGET0) firmwares
   eepromId = EEPROM.read(0);
+#ifdef OMNI_SUPPORT
   if (eepromId != ID_TARGET0 && eepromId != ID_TARGET1) {
     __romWrite(ID_TARGET0);
     eepromId = ID_TARGET0;
   }
+#else // no support for Omni
+  if (eepromId != ID_TARGET0) {
+    __romWrite(ID_TARGET0);
+    eepromId = ID_TARGET0;
+  }
+#endif
   switch (eepromId) {
     case ID_MASTER:
       __debug(F("Dual Hero EEPROM (master)"));
