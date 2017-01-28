@@ -289,6 +289,13 @@ boolean extendedZZcommand_R(int base)
             }
           }
           break;
+        case 7: // sync parameter (ID_MASTER only)
+          // after depressing shutter camera sends parameters to Dual Hero
+          // however, received parameter is buggy and completely unusable
+          // RECV(9+base:10+base)  : fps * 100
+          // RECV(11+base:12+base) : number of HSYNC pulses in one frame
+          // RECV(13+base:14+base) : ditto
+          break;
       }
       break;
     case 2: // Heartbeat
@@ -399,7 +406,7 @@ void extendedYYcommand_W(byte *p)
             hour = p[13]; minute = p[14]; second = p[15];
           } else {
             // no need to send the current time. truncate the packet
-            p[11] = 0; p[2] -= 4;
+            p[11] = 0; p[2] = 9;
           }
           break;
         case 28: // sync stop
