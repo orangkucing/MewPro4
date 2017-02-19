@@ -7,7 +7,7 @@ char startupSession;
 char **startUp; // pointer to startup sequence array
 
 // start up sequence for Omni firmware
-const char omni_session_0[] PROGMEM = "ZZ0000010000";
+const char omni_session_0[] PROGMEM = "ZZ0000010000"; // external sync signal required to shoot video/photo
 const char omni_session_1[] PROGMEM = "ZZ00050300000500";
 
 const char* const omni_startUp[] PROGMEM = {
@@ -15,8 +15,20 @@ const char* const omni_startUp[] PROGMEM = {
 };
 
 // start up sequence for camera's default firmware
-const char default_session_0[] PROGMEM = "ZZ0000010000";
+const char default_session_0[] PROGMEM = "ZZ0000010000"; // external sync
+const char default_session_1[] PROGMEM = "ZZ0000010100"; // standalone
+const char default_session_2[] PROGMEM = "YY0001000000"; // get current mode
+const char default_session_3[] PROGMEM = "YY00071a0000"; // get datetime
 
 const char* const default_startUp[] PROGMEM = {
-  default_session_0, NULL
+#ifdef USE_GENLOCK
+  default_session_0,
+#else
+  default_session_1,
+  default_session_2,
+#  ifdef USE_TIME_ALARMS
+  default_session_3,
+#  endif /* USE_TIME_ALARMS */
+#endif /* USE_GENLOCK */
+  NULL
 };

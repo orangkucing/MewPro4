@@ -30,6 +30,8 @@ void setup()
   }
   pinMode(HBUSRDY, INPUT_PULLUP);
   digitalWrite(PWRBTN, HIGH); pinMode(PWRBTN, OUTPUT);
+
+  setupShutter(); // Interface to CANON Timer Remote Controller TC-80N3
 }
 
 void loop() 
@@ -55,6 +57,7 @@ void loop()
     }    
     recvc = 0;
   }
+  checkTimeAlarms();
   checkTerminalCommands();
 }
 

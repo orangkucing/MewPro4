@@ -3,16 +3,44 @@
 #include <EEPROM.h>
 
 // enable console output
-// set false if this is MewPro #0 of dual dongle configuration
 boolean debug = true;
 
-#undef OMNI_SUPPORT
+// undef if MewPro 2 board is used as standalone
+#define USE_GENLOCK
 
 // a modified version of WireS library is already included in MewPro4 source package to minimize memory consumption
 #include "WireS.h"
 
+#ifdef USE_GENLOCK
+//////////////////////////////////////////////////////////
+// Options for genlock
+//   Choose either "#define" to use or "#undef" not to use. 
+
+// undef unless using GoPro Omni's privilaged firmware
+#undef OMNI_SUPPORT
+
+#else
+//////////////////////////////////////////////////////////
+// Options for standalone (not genlock)
+//   Choose either "#define" to use or "#undef" not to use. 
+//   if #define then don't forget to remove // before //#include
+
+//********************************************************
+// d_TimeAlarms: MewPro driven timelapse
+#undef  USE_TIME_ALARMS
+// Time and TimeAlarms libraries are downloadable from
+//   http://www.pjrc.com/teensy/td_libs_Time.html
+//   and http://www.pjrc.com/teensy/td_libs_TimeAlarms.html
+//#include <TimeLib.h> // *** please comment out this line if USE_TIME_ALARMS is not defined ***
+//#include <TimeAlarms.h> // *** please comment out this line if USE_TIME_ALARMS is not defined ***
+
+//********************************************************
+// e_Shutters: A remote shutters without contact bounce or chatter
+#undef  USE_SHUTTER
+
 // end of Options
 //////////////////////////////////////////////////////////
+#endif /* USE_GENLOCK */
 
 #include "startup.h"
 
@@ -32,7 +60,7 @@ volatile char i2cState = SESSION_IDLE;
 
 volatile unsigned char session = 0xFF;
 
-byte hour, minute, second; // to sync timestamps
+byte omni_hour, omni_minute, omni_second; // to sync timestamps (for Omni)
 
 // GoPro Omni EEPROM IDs
 const int ID_PRIMARY = 0x24;

@@ -1,4 +1,4 @@
-#MewPro 2
+#MewPro4
 
 Arduino BacPac™ for GoPro Hero 4 Black/Silver: GoPro can be controlled by ATtiny1634 attached on Herobus.
 

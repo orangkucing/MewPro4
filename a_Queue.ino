@@ -62,3 +62,35 @@ void emptyQueue()
     Serial.read();
   }
 }
+
+// Utility functions for standalone
+void startRecording()
+{
+  switch (mode) {
+    case MODE_VIDEO:
+      queueIn((char *)F("YY00021B0000"));
+      break;
+    case MODE_PHOTO:
+      queueIn((char *)F("YY0003170000"));
+      break;
+    case MODE_MULTI_SHOT:
+      queueIn((char *)F("YY00041B0000"));
+      break;
+  }
+}
+
+void stopRecording()
+{
+  switch (mode) {
+    case MODE_VIDEO:
+      queueIn((char *)F("YY00021C0000"));
+      break;
+    case MODE_PHOTO:
+      queueIn((char *)F("YY0003180000"));
+      break;
+    case MODE_MULTI_SHOT:
+      queueIn((char *)F("YY00041C0000"));
+      break;
+  }
+}
+

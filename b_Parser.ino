@@ -132,6 +132,17 @@ boolean extendedYYcommand_R(int base)
   boolean resend = false;
   switch (RECV(6 + base)) {
     case 1: // mode change
+      switch (RECV(7 + base)) {
+        case 0: // get main mode
+          mode = RECV(11 + base);
+          break;
+        case 1: // set main mode
+          mode = RECV(10 + base);
+          break;
+        case 5: // set sub mode. argc = 2; main, sub
+          mode = RECV(10 + base);
+          break;
+      }
       break;
     case 2: // video
       switch (RECV(7 + base)) {
@@ -146,7 +157,7 @@ boolean extendedYYcommand_R(int base)
             RECV(2) = 12;
             RECV(3) = RECV(4) = 'Z';
             RECV(5) = ++session;
-            RECV(14) = 0; RECV(13) = second; RECV(12) = minute; RECV(11) = hour;
+            RECV(14) = 0; RECV(13) = omni_second; RECV(12) = omni_minute; RECV(11) = omni_hour;
             RECV(13)++;
             if (RECV(13) == 60) {
               RECV(13) = 0; RECV(12)++;
@@ -212,6 +223,9 @@ boolean extendedYYcommand_R(int base)
       break;
     case 7: // global settings
       switch (RECV(7 + base)) {
+        case 26: // get datetime
+          _setTime(base);
+          break;
         case 33: // bulk transfer
           break;
       }
@@ -226,8 +240,7 @@ boolean extendedZZcommand_R(int base)
 {
   boolean resend = false;
   switch (RECV(6 + base)) {
-    case 0: // protocol revision
-      // current protocol revison is 1 0 0
+    case 0: // init external sync
       break;
     case 1: // sync
       switch (RECV(7 + base)) {
@@ -289,7 +302,7 @@ boolean extendedZZcommand_R(int base)
             }
           }
           break;
-        case 7: // sync parameter (ID_MASTER only)
+        case 7: // sync signal request (ID_MASTER only)
           // after depressing shutter camera sends parameters to Dual Hero
           // however, received parameter is buggy and completely unusable
           // RECV(9+base:10+base)  : fps * 100
@@ -403,7 +416,7 @@ void extendedYYcommand_W(byte *p)
         case 27: // shutter button depressed. start
           if (isOmni()) {
             // keep current time for future reference
-            hour = p[13]; minute = p[14]; second = p[15];
+            omni_hour = p[13]; omni_minute = p[14]; omni_second = p[15];
           } else {
             // no need to send the current time. truncate the packet
             p[11] = 0; p[2] = 9;
@@ -549,7 +562,9 @@ void extendedZZcommand_W(byte *p)
 {
   switch (p[8]) {
     case 0:
-      // current protocol revision is 1 0 0
+      //                                         p[9]  p[10] p[11]
+      // external sync signal for video/photo if 1     0     *
+      // standalone                           otherwise
       break;
     case 1: // sync
       break;
