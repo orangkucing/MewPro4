@@ -8,6 +8,10 @@ boolean debug = true;
 // undef if MewPro 2 board is used as standalone
 #define USE_GENLOCK
 
+// define only if this MewPro 2 board is the master of MewPro Bastet
+// undef for standalone, or slaves of MewPro Iliad and/or Bastet
+#undef  BASTET_MASTER
+
 // a modified version of WireS library is already included in MewPro4 source package to minimize memory consumption
 #include "WireS.h"
 

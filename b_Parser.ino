@@ -44,7 +44,25 @@ void _printInput()
       }
       Serial.println("");
     } 
+  } else {
+    // a short delay is necessary here
+    // if collisions occur while the delay then newly received data must be used
+    delay(1);
   }
+}
+
+void SendToBastet()
+{
+  int buflen = RECV(0);
+  Serial.write(RECV(1));
+  Serial.write(RECV(2));
+  // no need to send following two bytes
+  // RECV(3) : session #
+  // RECV(4) : constant 6 for YY or 4 for ZZ
+  for (int i = 5; i <= buflen; i++) {
+    printHex(RECV(i), false);
+  }
+  Serial.write('\n');
 }
 
 // parse command/reply that is received from camera through the herobus
@@ -61,9 +79,11 @@ boolean parseI2C_R()
       resend = YYcommand_R(base);
       break;
     case 4:
+      SendToBastet();
       ZZcommand_R(0); // ZZ command received. Dual Hero only
       break;
     case 6:
+      SendToBastet();
       YYcommand_R(0); // YY command received. Dual Hero only
       break;
   }

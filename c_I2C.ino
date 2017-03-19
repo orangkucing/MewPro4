@@ -195,9 +195,16 @@ void __romWrite(uint8_t id)
   }
 }
 
+#ifdef BASTET_MASTER
 // choose either
-//#define ID_TARGET0 ID_MASTER
-#define ID_TARGET0 ID_SLAVE
+#  define ID_TARGET0 ID_MASTER
+//#  define ID_TARGET0 ID_SLAVE
+#else
+// choose either
+//#  define ID_TARGET0 ID_MASTER
+#  define ID_TARGET0 ID_SLAVE
+#endif /* BASTET_MASTER */
+
 // choose either
 //#define ID_TARGET1 ID_PRIMARY
 #define ID_TARGET1 ID_SECONDARY
@@ -285,6 +292,8 @@ void SendBufToCamera(byte *p)
         i++;
       }
       Serial.println("");
+    } else {
+      delay(2); // a short delay is necessary before asserting I2CINT
     }
   } else {
     __debug(F("< request reply")); // (Omni firmware only)
