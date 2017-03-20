@@ -79,7 +79,6 @@ boolean parseI2C_R()
       resend = YYcommand_R(base);
       break;
     case 4:
-      SendToBastet();
       ZZcommand_R(0); // ZZ command received. Dual Hero only
       break;
     case 6:
@@ -130,6 +129,10 @@ boolean ZZcommand_R(int base)
             memcpy_P((byte *)&(RECV(3)), F("\x00\x00\x00\x00\x00\x00\x02\x00"), 8);
             i2cState = SESSION_IDLE;
             SendBufToCamera((byte *)&(RECV(0)));                      
+            // send '@' command to Bastet
+            Serial.write('\n');
+            Serial.write('@');
+            Serial.write('\n');                     
           }
           break;
       }
@@ -343,6 +346,7 @@ boolean extendedZZcommand_R(int base)
       }
       break;
     case 3: // power off
+      SendToBastet();
       break;
     case 5: // bacpac firmware version
       break;
