@@ -293,7 +293,7 @@ void SendBufToCamera(byte *p)
       }
       Serial.println("");
     } else {
-      delay(2); // a short delay is necessary before asserting I2CINT
+      delay(3); // a short delay is necessary before asserting I2CINT
     }
   } else {
     __debug(F("< request reply")); // (Omni firmware only)

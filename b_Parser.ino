@@ -47,7 +47,7 @@ void _printInput()
   } else {
     // a short delay is necessary here
     // if collisions occur while the delay then newly received data must be used
-    delay(1);
+    delay(3);
   }
 }
 
