@@ -15,6 +15,7 @@ const char* const omni_startUp[] PROGMEM = {
 };
 
 // start up sequence for camera's default firmware
+const char set_lowlight_off[]  PROGMEM = "YY000209000100"; // lowlight off
 const char default_session_0[] PROGMEM = "ZZ0000010000"; // external sync
 const char default_session_1[] PROGMEM = "ZZ0000010100"; // standalone
 const char default_session_2[] PROGMEM = "YY0001000000"; // get current mode
@@ -22,6 +23,7 @@ const char default_session_3[] PROGMEM = "YY00071a0000"; // get datetime
 
 const char* const default_startUp[] PROGMEM = {
 #ifdef USE_GENLOCK
+  set_lowlight_off,
   default_session_0,
 #else
   default_session_1,
