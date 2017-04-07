@@ -54,6 +54,10 @@ void _printInput()
 void SendToBastet()
 {
   int buflen = RECV(0);
+  if (RECV(2) == 0) { 
+    // received packet is the reply for the previous command. Dual Hero only
+    return;
+  }
   Serial.write(RECV(1));
   Serial.write(RECV(2));
   // no need to send following two bytes
