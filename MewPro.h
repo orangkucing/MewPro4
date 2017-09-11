@@ -12,6 +12,10 @@ boolean debug = true;
 // undef for standalone, or slaves of MewPro Iliad and/or Bastet
 #undef  BASTET_MASTER
 
+// define only if you keep using the good old 3D housing that comes with GoPro Dual Hero system originally for Hero 3+ Black:
+// slave cameras' orientation will be forced to set to "DOWN".
+#undef  DUAL_HERO_ORIENTATION
+
 // a modified version of WireS library is already included in MewPro4 source package to minimize memory consumption
 #include "WireS.h"
 
